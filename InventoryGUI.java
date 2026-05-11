@@ -1,16 +1,24 @@
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SpinnerDateModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -21,6 +29,7 @@ public class InventoryGUI extends JFrame {
     private final Inventory inventory;
     private final DefaultTableModel tableModel;
     private final JLabel summaryLabel;
+    private JTable table;
 
     public InventoryGUI() {
         this(new Inventory());
@@ -48,7 +57,7 @@ public class InventoryGUI extends JFrame {
             }
         };
 
-        JTable table = new JTable(tableModel);
+        table = new JTable(tableModel);
         table.setRowHeight(24);
         table.setFillsViewportHeight(true);
         table.setAutoCreateRowSorter(true);
@@ -71,9 +80,21 @@ public class InventoryGUI extends JFrame {
         summaryLabel = new JLabel();
         bottomPanel.add(summaryLabel, BorderLayout.WEST);
 
+        JPanel buttonPanel = new JPanel();
+        
+        JButton addButton = new JButton("+ Add Food");
+        addButton.addActionListener(e -> showAddFoodDialog());
+        buttonPanel.add(addButton);
+        
+        JButton removeButton = new JButton("- Remove Food");
+        removeButton.addActionListener(e -> removeSelectedFood());
+        buttonPanel.add(removeButton);
+        
         JButton refreshButton = new JButton("Refresh");
         refreshButton.addActionListener(e -> loadInventory());
-        bottomPanel.add(refreshButton, BorderLayout.EAST);
+        buttonPanel.add(refreshButton);
+        
+        bottomPanel.add(buttonPanel, BorderLayout.EAST);
 
         add(bottomPanel, BorderLayout.SOUTH);
 
@@ -115,6 +136,106 @@ public class InventoryGUI extends JFrame {
         summaryLabel.setText(String.format(
                 "Total items: %d | Expired: %d | Expiring soon: %d",
                 items.size(), expiredCount, expiringSoonCount));
+    }
+
+    private void showAddFoodDialog() {
+        JDialog dialog = new JDialog(this, "Add Food Item", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        JPanel contentPanel = new JPanel(new GridLayout(5, 2, 10, 10));
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        dialog.add(contentPanel);
+
+        JLabel nameLabel = new JLabel("Name:");
+        JTextField nameField = new JTextField();
+        contentPanel.add(nameLabel);
+        contentPanel.add(nameField);
+
+        JLabel quantityLabel = new JLabel("Quantity:");
+        JTextField quantityField = new JTextField();
+        contentPanel.add(quantityLabel);
+        contentPanel.add(quantityField);
+
+        JLabel unitLabel = new JLabel("Unit:");
+        JTextField unitField = new JTextField();
+        contentPanel.add(unitLabel);
+        contentPanel.add(unitField);
+
+        JLabel expirationLabel = new JLabel("Expiration Date:");
+        JSpinner dateSpinner = new JSpinner(new SpinnerDateModel());
+        JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd");
+        dateSpinner.setEditor(dateEditor);
+        dateSpinner.setValue(new Date());
+        contentPanel.add(expirationLabel);
+        contentPanel.add(dateSpinner);
+
+        JPanel buttonPanel = new JPanel();
+        JButton addBtn = new JButton("Add");
+        JButton cancelBtn = new JButton("Cancel");
+        
+        addBtn.addActionListener(e -> {
+            try {
+                String name = nameField.getText().trim();
+                double quantity = Double.parseDouble(quantityField.getText().trim());
+                String unit = unitField.getText().trim();
+                Date selectedDate = (Date) dateSpinner.getValue();
+                LocalDate expirationDate = selectedDate.toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate();
+
+                if (name.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialog, "Please enter a food name.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                if (unit.isEmpty()) {
+                    JOptionPane.showMessageDialog(dialog, "Please enter a unit.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                FoodItem newItem = new FoodItem(name, quantity, unit, expirationDate);
+                inventory.addItem(newItem);
+                loadInventory();
+                dialog.dispose();
+                JOptionPane.showMessageDialog(this, "Food item added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "Please enter a valid quantity.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        cancelBtn.addActionListener(e -> dialog.dispose());
+        
+        buttonPanel.add(addBtn);
+        buttonPanel.add(cancelBtn);
+        contentPanel.add(buttonPanel);
+
+        dialog.setSize(400, 250);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void removeSelectedFood() {
+        int selectedRow = table.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Please select a food item to remove.", "No Selection", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int modelRow = table.convertRowIndexToModel(selectedRow);
+        int foodId = (int) tableModel.getValueAt(modelRow, 0);
+        String foodName = (String) tableModel.getValueAt(modelRow, 1);
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to remove \"" + foodName + "\"?",
+                "Confirm Removal",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            if (inventory.removeItem(foodId)) {
+                loadInventory();
+                JOptionPane.showMessageDialog(this, "Food item removed successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to remove food item.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     public static void main(String[] args) {
