@@ -94,6 +94,10 @@ public class InventoryGUI extends JFrame {
         refreshButton.addActionListener(e -> loadInventory());
         buttonPanel.add(refreshButton);
         
+        JButton suggestButton = new JButton("Suggest Meals");
+        suggestButton.addActionListener(e -> showMealSuggestions());
+        buttonPanel.add(suggestButton);
+        
         bottomPanel.add(buttonPanel, BorderLayout.EAST);
 
         add(bottomPanel, BorderLayout.SOUTH);
@@ -236,6 +240,53 @@ public class InventoryGUI extends JFrame {
                 JOptionPane.showMessageDialog(this, "Failed to remove food item.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    private void showMealSuggestions() {
+        LocalDate today = LocalDate.now();
+        List<Meal> suggestedMeals = MealSuggester.suggestMealsFromInventory(Meal.defaultMeals(), inventory, today);
+
+        if (suggestedMeals.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No meals can be suggested with your current inventory.",
+                    "No Suggestions",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JDialog dialog = new JDialog(this, "Suggested Meals", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        JPanel contentPanel = new JPanel(new BorderLayout(10, 10));
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        dialog.add(contentPanel);
+
+        JLabel titleLabel = new JLabel("Meals you can make with your ingredients:");
+        titleLabel.setFont(titleLabel.getFont().deriveFont(14f));
+        contentPanel.add(titleLabel, BorderLayout.NORTH);
+
+        StringBuilder mealList = new StringBuilder("<html><body>");
+        for (int i = 0; i < suggestedMeals.size(); i++) {
+            Meal meal = suggestedMeals.get(i);
+            mealList.append("<b>").append(i + 1).append(". ").append(meal.getName()).append("</b>");
+            mealList.append("<br>&nbsp;&nbsp;&nbsp;&nbsp;Ingredients: ")
+                    .append(String.join(", ", meal.getIngredients()))
+                    .append("<br><br>");
+        }
+        mealList.append("</body></html>");
+
+        JLabel mealsLabel = new JLabel(mealList.toString());
+        JScrollPane scrollPane = new JScrollPane(mealsLabel);
+        contentPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+        JButton closeBtn = new JButton("Close");
+        closeBtn.addActionListener(e -> dialog.dispose());
+        buttonPanel.add(closeBtn);
+        contentPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        dialog.setSize(500, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     public static void main(String[] args) {
