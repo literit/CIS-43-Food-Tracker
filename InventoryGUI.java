@@ -33,7 +33,7 @@ import javax.swing.table.DefaultTableModel;
 
 /**
  * InventoryGUI.java
- * @author Vikram
+ * @author Vikram & Uri
  * 
  * Main window for the Food Tracker. Shows inventory in a table,
  * color codes items by expiration, and has search/filter/edit.
