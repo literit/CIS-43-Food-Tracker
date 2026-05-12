@@ -2,6 +2,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Meal.java
+ * @author Javen
+ * 
+ * Stores a meal name and its list of ingredients.
+ * defaultMeals() has a bunch of preset meals we can suggest to the user.
+ */
 public class Meal {
     private static int nextId = 1;
 
@@ -12,6 +19,7 @@ public class Meal {
     public Meal(String name, List<String> ingredients) {
         this.id = nextId++;
         this.name = name;
+        // store ingredients in lowercase so matching is easier later
         this.ingredients = new ArrayList<>();
         for (String s : ingredients) {
             this.ingredients.add(s.trim().toLowerCase());
@@ -39,6 +47,7 @@ public class Meal {
         return String.format("%s - ingredients: %s", name, String.join(", ", ingredients));
     }
 
+    // returns a list of sample meals the user might want to make
     public static List<Meal> defaultMeals() {
         List<Meal> m = new ArrayList<>();
         m.add(new Meal("Pasta with Tomato & Cheese", List.of("pasta", "tomato", "cheese")));
